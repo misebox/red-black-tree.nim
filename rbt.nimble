@@ -5,7 +5,7 @@ author        = "misebox"
 description   = "Red-black tree written in nim"
 license       = "MIT"
 srcDir        = "src"
-bin           = @["rbt"]
+bin           = @["example"]
 
 
 
