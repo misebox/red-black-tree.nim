@@ -6,15 +6,16 @@ export options
 
 type
   Comparable* = concept o
-    `<`(o, o) is bool
-    `==`(o, o) is bool
+    `cmp`(o, o) is int
+
+  RBColor = bool
 
   RBNode*[K: Comparable, T] = ref object
     parent: RBNode[K, T]
     no: int
     left: RBNode[K, T]
     right: RBNode[K, T]
-    isRed: bool
+    color: bool
     key: K
     value: T
 
@@ -27,9 +28,15 @@ type
     LEFT = false
     RIGHT = true
 
+const
+  RED = false
+  BLACK = true
+
 
 # RBNode
-proc isBlack(n: RBNode): bool = not n.isRed
+proc paint(n: RBNode, c: RBColor) {.inline.} = n.color = c
+proc isRed(n: RBNode): bool {.inline.} = (n != nil and n.color == RED)
+proc isBlack(n: RBNode): bool {.inline.} = (n == nil or n.color == BLACK)
 
 proc `$`*(n: RBNode): string =
   let pno = if n.parent != nil: $(n.parent.no) else: "nil"
@@ -52,14 +59,15 @@ proc trace*(t: RBTree) =
 proc initRBTree*[K, T](): RBTree[K, T] =
   RBTree[K, T](count: 0, depth: 0, root: nil)
 
-proc initRBNode*[K, T](no: int, key: K, value: T, p: RBNode[K, T]=nil): RBNode[K, T] =
-  RBNode[K, T](parent: p, no: no, key: key, value: value, isRed: true)
+proc initRBNode*[K, T](t: RBTree[K, T], p: RBNode[K, T], key: K, value: T): RBNode[K, T] =
+  t.count += 1
+  RBNode[K, T](parent: p, no: t.count, key: key, value: value, color: RED)
 
 proc isLeft(n: RBNode): bool =
   assert(n.parent != nil, "Parent is nil")
   n.parent.left == n
 
-proc rotate(n: RBNode, dir: RBDir) =
+proc rotate(n: RBNode, dir: RBDir): RBNode =
   when not defined(release): log(lvlDebug, fmt"[rotate {n.no} to {dir}]")
   var pivot: RBNode
   if dir == RBDir.LEFT:
@@ -73,30 +81,36 @@ proc rotate(n: RBNode, dir: RBDir) =
     n.left = pivot.right
     pivot.right = n
 
-  if n.parent != nil:
-    if n.isLeft:
-      n.parent.left = pivot
-    else:
-      n.parent.right = pivot
-  pivot.parent = n.parent
-  n.parent = pivot
+  # pivot.color = n.color
+  # n.color = RED
+
+  block:
+    if n.parent != nil:
+      if n.isLeft:
+        n.parent.left = pivot
+      else:
+        n.parent.right = pivot
+    pivot.parent = n.parent
+    n.parent = pivot
+
+  pivot
+
+proc flipColors(n: RBNode) =
+  n.color = not n.color
+  n.left.color = not n.left.color
+  n.right.color = not n.right.color
 
 proc balance(t: RBTree, node: RBNode) =
   var
     n = node
     p = n.parent
 
-  if n.parent == nil:
-    when not defined(release):
-      log(lvlDebug, "[Case 1: The target node is root]")
-    # Make it black
-    n.isRed = false
-    return
   if p.isBlack:
     when not defined(release):
       log(lvlDebug, "[Case 2: parent is black]")
     # Nothing to do
     return
+
   let g = p.parent
   let u = if p.isLeft: g.right else: g.left
   if p.isRed:
@@ -104,9 +118,7 @@ proc balance(t: RBTree, node: RBNode) =
       when not defined(release):
         log(lvlDebug, "[Case 3: If P and U are red]")
       # Make P,U,G reversed
-      p.isRed = false
-      u.isRed = false
-      g.isRed = true
+      g.flipColors()
       # Rerun on G recursively to preserve rules
       t.balance(g)
     else:
@@ -118,47 +130,52 @@ proc balance(t: RBTree, node: RBNode) =
       if p.isLeft:
         if not n.isLeft:
           # N is right of left of G
-          p.rotate(RBDir.LEFT)
+          discard p.rotate(RBDir.LEFT)
           swap(n, p)
         # N is left of left of G
-        g.rotate(RBDir.RIGHT)
+        discard g.rotate(RBDir.RIGHT)
       else:
         if n.isLeft:
           # N is left of right of G
-          p.rotate(RBDir.RIGHT)
+          discard p.rotate(RBDir.RIGHT)
           swap(n, p)
         # N is right of right of G
-        g.rotate(RBDir.LEFT)
-      p.isRed = false
-      g.isRed = true
+        discard g.rotate(RBDir.LEFT)
+      p.paint(BLACK)
+      g.paint(RED)
   # Replace root
   while t.root.parent != nil:
     t.root = t.root.parent
 
-proc insert*[K, T](t: RBTree[K, T], key: K, value: T, node: RBNode[K, T]=nil) =
-  var p = if node == nil: t.root else: node
+proc insert*[K, T](t: RBTree[K, T], p: RBNode[K, T], key: K, value: T) =
   if p == nil:
-    # Becomes root
-    t.root = initRBNode(t.count, key, value)
-    t.count += 1
-    balance(t, t.root)
+    t.root = t.initRBNode(nil, key, value)
+    return
+  let cmp = key.cmp(p.key)
+  if cmp == 0:
+    p.value = value
+    return
   else:
-    if key < p.key:
-      # To left
+    if cmp < 0:
       if p.left == nil:
-        p.left = initRBNode(t.count, key, value, p)
-        t.count += 1
+        p.left = t.initRBNode(p, key, value)
         balance(t, p.left)
       else:
-        t.insert(key, value, p.left)
+        t.insert(p.left, key, value)
     else:
-      # To right
       if p.right == nil:
-        p.right = initRBNode(t.count, key, value, p)
-        t.count += 1
+        p.right = t.initRBNode(p, key, value)
         balance(t, p.right)
       else:
-        t.insert(key, value, p.right)
+        t.insert(p.right, key, value)
+
+proc insert*[K, T](t: RBTree[K, T], key: K, value: T) =
+  t.insert(t.root, key, value)
+  # The root is always black
+  when not defined(release):
+    if t.root.isRed:
+      log(lvlDebug, "[Case 1: The target node is root]")
+  t.root.paint(BLACK)
 
 proc get[K, T](p: RBNode[K, T], key: K): Option[T] =
   if p == nil: none(T)

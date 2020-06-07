@@ -1,6 +1,10 @@
 import rbt
 import osproc
 import random
+import logging
+
+
+addHandler(newConsoleLogger(lvlDebug))
 
 proc main() =
   randomize()
