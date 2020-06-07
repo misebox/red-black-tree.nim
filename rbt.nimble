@@ -5,6 +5,7 @@ author        = "misebox"
 description   = "Red-black tree written in nim"
 license       = "MIT"
 srcDir        = "src"
+binDir        = "."
 bin           = @["example"]
 
 
