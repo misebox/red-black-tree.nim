@@ -5,12 +5,14 @@ import random
 proc main() =
   randomize()
   discard execCmd "clear"
-  var t = initRBTree[int, string]()
+  var t = initRBTree[string, string]()
 
   for _ in .. 10:
-    let k = rand(100)
+    var k: string = ""
     var d: string = ""
-    for _ in .. 10:
+    for _ in 0 ..< 3:
+      k.add(char(rand(int('A') .. int('Z'))))
+    for _ in 0 ..< 10:
       d.add(char(rand(int('a') .. int('z'))))
     t.insert(k, d)
 

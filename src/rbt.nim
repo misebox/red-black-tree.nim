@@ -6,7 +6,9 @@ type
     `<`(o, o) is bool
     `==`(o, o) is bool
 
-  RBNode*[K: Comparable, T] = ref object
+  RefType* = concept ref o
+
+  RBNode*[K: Comparable, T: RefType] = ref object
     parent: RBNode[K, T]
     no: int
     left: RBNode[K, T]
@@ -16,7 +18,7 @@ type
     value: T
     tree: RBTree[K, T]
 
-  RBTree*[K: Comparable, T] = ref object
+  RBTree*[K: Comparable, T: RefType] = ref object
     count: int
     depth: int
     root: RBNode[K, T]
@@ -35,11 +37,11 @@ proc `$`*(n: RBNode): string =
 
 proc trace*(node: RBNode, depth: int = 0) =
   if node.right != nil: node.right.trace(depth+1)
-  else: echo " ".repeat(depth*2 + 2), "(+ "
-  let c = if node.isRed: "(- " else: "(+ "
-  echo " ".repeat(depth*2), c, $node.no, ".", $node.key, ": ", $node.value
+  else: echo " ".repeat(depth*2 + 2), "+ [ ]"
+  let c = if node.isRed: "-" else: "+"
+  echo " ".repeat(depth*2), fmt"{c} [{node.no}. {node.key}: {node.value}]"
   if node.left != nil: node.left.trace(depth+1)
-  else: echo " ".repeat(depth*2 + 2), "(+ "
+  else: echo " ".repeat(depth*2 + 2), "+ [ ]"
 
 proc trace*(t: RBTree) =
   t.root.trace()
@@ -160,3 +162,9 @@ proc insert*[K, T](t: RBTree[K, T], key: K, value: T, node: RBNode[K, T]=nil) =
         when not defined(release): echo "---- after:"; t.root.trace()
       else:
         t.insert(key, value, p.right)
+
+proc get*[K, T](t: RBTree[K, T], key: K, node: RBNode[K, T]=nil): T =
+  var p = if node == nil: t.root else: node
+  if p == nil:
+    return nil
+  
