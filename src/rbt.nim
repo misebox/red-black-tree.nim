@@ -29,6 +29,8 @@ type
 
 
 # RBNode
+proc isBlack(n: RBNode): bool = not n.isRed
+
 proc `$`*(n: RBNode): string =
   let pno = if n.parent != nil: $(n.parent.no) else: "nil"
   let lno = if n.left != nil: $(n.left.no) else: "nil"
@@ -90,7 +92,7 @@ proc balance(t: RBTree, node: RBNode) =
     # Make it black
     n.isRed = false
     return
-  if p.isRed == false:
+  if p.isBlack:
     when not defined(release):
       log(lvlDebug, "[Case 2: parent is black]")
     # Nothing to do
