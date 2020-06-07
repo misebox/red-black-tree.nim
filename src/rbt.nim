@@ -2,21 +2,24 @@ import strformat
 import strutils
 
 type
-  Data* = string
+  Comparable* = concept o
+    `<`(o, o) is bool
+    `==`(o, o) is bool
 
-  RBNode* = ref object
-    parent: RBNode
+  RBNode*[K: Comparable, T] = ref object
+    parent: RBNode[K, T]
     no: int
-    left: RBNode
-    right: RBNode
+    left: RBNode[K, T]
+    right: RBNode[K, T]
     isRed: bool
-    data: Data
-    tree: RBTree
+    key: K
+    value: T
+    tree: RBTree[K, T]
 
-  RBTree* = ref object
-    count*: int
-    depth*: int
-    root: RBNode
+  RBTree*[K: Comparable, T] = ref object
+    count: int
+    depth: int
+    root: RBNode[K, T]
   
   RBDir {.pure.} = enum
     LEFT = false
@@ -28,13 +31,13 @@ proc `$`*(n: RBNode): string =
   let pno = if n.parent != nil: $(n.parent.no) else: "nil"
   let lno = if n.left != nil: $(n.left.no) else: "nil"
   let rno = if n.right != nil: $(n.right.no) else: "nil"
-  fmt"RBNode(no: {n.no}, parent: {pno}, left: {lno}, right: {rno}, data: {$ n.data})"
+  fmt"RBNode(no: {n.no}, parent: {pno}, left: {lno}, right: {rno}, key: {$ n.key}, value: {$ n.value})"
 
 proc trace*(node: RBNode, depth: int = 0) =
   if node.right != nil: node.right.trace(depth+1)
   else: echo " ".repeat(depth*2 + 2), "(+ "
   let c = if node.isRed: "(- " else: "(+ "
-  echo " ".repeat(depth*2), c, $node.no, ".", $node.data
+  echo " ".repeat(depth*2), c, $node.no, ".", $node.key, ": ", $node.value
   if node.left != nil: node.left.trace(depth+1)
   else: echo " ".repeat(depth*2 + 2), "(+ "
 
@@ -42,11 +45,11 @@ proc trace*(t: RBTree) =
   t.root.trace()
 
 # Tree
-proc initRBTree*(): RBTree =
-  RBTree(count: 0, depth: 0, root: nil)
+proc initRBTree*[K, T](): RBTree[K, T] =
+  RBTree[K, T](count: 0, depth: 0, root: nil)
 
-proc initRBNode*(t: RBTree, p: RBNode, no: int, data: Data, isRed: bool = true): RBNode =
-  RBNode(parent: p, no: no, data: data, isRed: isRed, tree: t)
+proc initRBNode*[K, T](t: RBTree[K, T], p: RBNode[K, T], no: int, key: K, value: T, isRed: bool = true): RBNode[K, T] =
+  RBNode[K, T](parent: p, no: no, key: key, value: value, isRed: isRed, tree: t)
 
 proc isLeft(n: RBNode): bool =
   assert(n.parent != nil, "Parent is nil")
@@ -126,31 +129,34 @@ proc balance(t: RBTree, node: RBNode) =
   while t.root.parent != nil:
     t.root = t.root.parent
 
-proc insert*(t: RBTree, data: Data, node: RBNode=nil) =
+proc insert*[K, T](t: RBTree[K, T], key: K, value: T, node: RBNode[K, T]=nil) =
   var p = if node == nil: t.root else: node
   if p == nil:
-    t.root = t.initRBNode(nil, t.count, data)
+    # Becomes root
+    t.root = t.initRBNode(nil, t.count, key, value)
     t.count += 1
     when not defined(release): echo "---- before:"; t.root.trace()
     balance(t, t.root)
     when not defined(release): echo "---- after:"; t.root.trace()
   else:
-    if data < p.data:
+    if key < p.key:
+      # To left
       if p.left == nil:
-        p.left = t.initRBNode(p, t.count, data)
+        p.left = t.initRBNode(p, t.count, key, value)
         t.count += 1
 
         when not defined(release): echo "---- before:"; t.root.trace()
         balance(t, p.left)
         when not defined(release): echo "---- after:"; t.root.trace()
       else:
-        t.insert(data, p.left)
+        t.insert(key, value, p.left)
     else:
+      # To right
       if p.right == nil:
-        p.right = t.initRBNode(p, t.count, data)
+        p.right = t.initRBNode(p, t.count, key, value)
         t.count += 1
         when not defined(release): echo "---- before:"; t.root.trace()
         balance(t, p.right)
         when not defined(release): echo "---- after:"; t.root.trace()
       else:
-        t.insert(data, p.right)
+        t.insert(key, value, p.right)
