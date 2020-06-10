@@ -1,2 +1,5 @@
 rbt
 example
+tests/*
+!tests/config.nims
+!tests/*.nim
