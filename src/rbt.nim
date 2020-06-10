@@ -23,10 +23,24 @@ type
     count: int
     depth: int
     root: RBNode[K, T]
-  
+
   RBDir {.pure.} = enum
     LEFT = false
     RIGHT = true
+
+
+  ResultType {.pure.} = enum
+    None
+    EmptyLeft
+    EmptyRight
+    Found
+
+  SearchResult[K, T] = tuple
+    ## Not found => (parent, nil, Left or Right)
+    ## Found key => (parent, target, None)
+    typ: ResultType
+    parent: RBNode[K, T]
+    target: RBNode[K, T]
 
 const
   RED = false
@@ -147,44 +161,55 @@ proc balance(t: RBTree, node: RBNode) =
   while t.root.parent != nil:
     t.root = t.root.parent
 
-proc insert*[K, T](t: RBTree[K, T], p: RBNode[K, T], key: K, value: T) =
-  if p == nil:
-    t.root = t.initRBNode(nil, key, value)
-    return
-  let cmp = key.cmp(p.key)
-  if cmp == 0:
-    p.value = value
-    return
-  else:
-    if cmp < 0:
-      if p.left == nil:
-        p.left = t.initRBNode(p, key, value)
-        balance(t, p.left)
-      else:
-        t.insert(p.left, key, value)
+proc search[K, T](node: RBNode[K, T], key: K): SearchResult[K, T] =
+  ## Search for key from specified node
+  var
+    n = node
+    p: RBNode[K, T] = if n != nil: n.parent else: nil
+    rt = ResultType.None
+  while n != nil:
+    p = n.parent
+    let c = key.cmp(n.key)
+    if c == 0:
+      # Found
+      rt = ResultType.Found
+      break
+    elif c < 0:
+      p = n
+      n = n.left
+      rt = ResultType.EmptyLeft
     else:
-      if p.right == nil:
-        p.right = t.initRBNode(p, key, value)
-        balance(t, p.right)
-      else:
-        t.insert(p.right, key, value)
+      p = n
+      n = n.right
+      rt = ResultType.EmptyRight
+  # Not found
+  (rt, p, n)
 
 proc insert*[K, T](t: RBTree[K, T], key: K, value: T) =
-  t.insert(t.root, key, value)
+  var (rt, p, n) = t.root.search(key)
+  case rt
+  of ResultType.Found:
+    n.value = value
+    return
+  of ResultType.None:
+    n = t.initRBNode(nil, key, value)
+    t.root = n
+  of ResultType.EmptyLeft:
+    n = t.initRBNode(p, key, value)
+    p.left = n
+  of ResultType.EmptyRight:
+    n = t.initRBNode(p, key, value)
+    p.right = n
+  t.balance(n)
   # The root is always black
   when not defined(release):
     if t.root.isRed:
       log(lvlDebug, "[Case 1: The target node is root]")
   t.root.paint(BLACK)
 
-proc get[K, T](p: RBNode[K, T], key: K): Option[T] =
-  if p == nil: none(T)
-  elif key == p.key: some(p.value)
-  elif key < p.key:
-    if p.left != nil: p.left.get(key) else: none(T)
-  else:
-    if p.right != nil: p.right.get(key) else: none(T)
-  
 proc `[]`*[K, T](t: RBTree[K, T], key: K): Option[T] =
-  t.root.get(key)
-
+  let (rt, _, n) = t.root.search(key)
+  if rt == ResultType.Found:
+    some(n.value)
+  else:
+    none(T)
