@@ -12,7 +12,6 @@ type
 
   RBNode[K: Comparable, T] = ref object
     parent: RBNode[K, T]
-    no: int
     left: RBNode[K, T]
     right: RBNode[K, T]
     color: bool
@@ -58,16 +57,13 @@ proc isRed(n: RBNode): bool {.inline.} = (n != nil and n.color == RED)
 proc isBlack(n: RBNode): bool {.inline.} = (n == nil or n.color == BLACK)
 
 proc `$`*(n: RBNode): string =
-  let pno = if n.parent != nil: $(n.parent.no) else: "nil"
-  let lno = if n.left != nil: $(n.left.no) else: "nil"
-  let rno = if n.right != nil: $(n.right.no) else: "nil"
-  fmt"RBNode(no: {n.no}, parent: {pno}, left: {lno}, right: {rno}, key: {$ n.key}, value: {$ n.value})"
+  fmt"RBNode(key: {$ n.key}, value: {$ n.value})"
 
 proc trace*(node: RBNode, depth: int = 0) =
   if node == nil: return
   node.right.trace(depth+1)
   let c = if node.isRed: "-" else: "+"
-  echo " ".repeat(depth*2), fmt"{c} [{$node.no}. {$node.key}: {$node.value}]"
+  echo " ".repeat(depth*2), fmt"{c} [{$node.key}: {$node.value}]"
   node.left.trace(depth+1)
 
 proc trace*(t: RBTree) =
@@ -79,14 +75,14 @@ proc initRBTree*[K, T](): RBTree[K, T] =
   RBTree[K, T](count: 0, depth: 0, root: nil)
 
 proc initRBNode*[K, T](t: RBTree[K, T], p: RBNode[K, T], key: K, value: T): RBNode[K, T] =
-  RBNode[K, T](parent: p, no: t.count, key: key, value: value, color: RED)
+  RBNode[K, T](parent: p, key: key, value: value, color: RED)
 
 proc isLeft(n: RBNode): bool =
   assert(n.parent != nil, "Parent is nil")
   n.parent.left == n
 
 proc rotate(n: RBNode, dir: RBDir): RBNode =
-  when not defined(release): log(lvlDebug, fmt"[rotate {n.no} to {dir}]")
+  # when not defined(release): log(lvlDebug, fmt"[rotate {dir}]")
   var pivot: RBNode
   if dir == RBDir.LEFT:
     assert(n.right != nil, "Pivot is nil")
@@ -265,8 +261,6 @@ proc take*[K, T](t: RBTree[K, T], key: K): Option[T] {.inline.} =
   if m == nil: m = n.right.search(key).parent
   if m == nil: m = n else: (n.key, n.value) = (m.key, m.value)
 
-  when not defined(release):
-    log(lvlDebug, fmt"[{n.no}.{n.key} -> {m.no}.{m.key}]")
   var p = m.parent
   var c = if m.left != nil: m.left
     elif m.right != nil: m.right else: nil
@@ -292,7 +286,7 @@ proc remove*[K, T](t: RBTree[K, T], key: K) =
   discard t.take(key)
 
 # Put
-proc `[]=`*[K, T](t: var RBTree[K, T], key: K, value: T) =
+proc `[]=`*[K, T](t: RBTree[K, T], key: K, value: T) =
   t.insert(key, value)
 
 # Get
@@ -304,10 +298,10 @@ proc `[]`*[K, T](t: RBTree[K, T], key: K): Option[T] =
     none(T)
 
 # Traversal
-iterator traverse*[K, T](start: RBNode[K, T]): (K, T) {.closure.} =
-  if start == nil: return
+iterator traverse*[K, T](t: RBTree[K, T]): (K, T) {.closure.} =
+  if t.root == nil: return
   var prev: RBNode[K, T] = nil
-  var n = start
+  var n = t.root
   while true:
     if n.left != nil and (prev == nil or prev == n.parent):
       prev = n
