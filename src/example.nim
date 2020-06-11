@@ -30,7 +30,7 @@ proc main() =
     echo k, t[k]
   echo "[Delete]"
   for k in keys:
-    t.delete(k)
+    t.remove(k)
   echo "done"
   t.trace()
 

@@ -45,3 +45,12 @@ suite "Public interface test":
     assert(t.take("C") == some("citlas"))
     assert(t.count == 0)
     assert(t.take("D").isNone)
+
+  test "Removal":
+    var t = initRBTree[string, string]()
+    t["A"] = "apple"
+    t["B"] = "banana"
+    assert(t.count == 2)
+    t.remove("A")
+    assert(t.count == 1)
+    assert(t["B"] == some("banana"))

@@ -1,5 +1,6 @@
 import strformat
 import logging
+import strutils
 import options
 export options
 
@@ -66,7 +67,7 @@ proc trace*(node: RBNode, depth: int = 0) =
   if node == nil: return
   node.right.trace(depth+1)
   let c = if node.isRed: "-" else: "+"
-  echo " ".repeat(depth*2), fmt"{c} [{node.no}. {node.key}: {node.value}]"
+  echo " ".repeat(depth*2), fmt"{c} [{$node.no}. {$node.key}: {$node.value}]"
   node.left.trace(depth+1)
 
 proc trace*(t: RBTree) =
@@ -287,8 +288,8 @@ proc take*[K, T](t: RBTree[K, T], key: K): Option[T] {.inline.} =
     while c.parent != nil: c = c.parent
     t.root = c
 
-proc delete*[K, T](t: RBTree[K, T], key: K) =
-  discard t.take(t, key)
+proc remove*[K, T](t: RBTree[K, T], key: K) =
+  discard t.take(key)
 
 # Put
 proc `[]=`*[K, T](t: var RBTree[K, T], key: K, value: T) =
