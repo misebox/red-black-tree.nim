@@ -78,7 +78,7 @@ for k, v in t.traverse:
 
 ## Example
 
-See `src/example.nim`
+See `src/example.nim`.
 
 ```
 $ nimble run example
@@ -146,3 +146,10 @@ count: 0
 
 ```
 
+## Test
+
+See `tests/*.nim`.
+
+```
+$ nimble test
+```
