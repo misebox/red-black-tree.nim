@@ -1,5 +1,4 @@
 import strformat
-import strutils
 import logging
 import options
 export options
@@ -21,7 +20,7 @@ type
 
   RBTree*[K: Comparable, T] = ref object
     ## Red-black tree
-    count: int
+    count*: int
     depth: int
     root: RBNode[K, T]
 
@@ -79,7 +78,6 @@ proc initRBTree*[K, T](): RBTree[K, T] =
   RBTree[K, T](count: 0, depth: 0, root: nil)
 
 proc initRBNode*[K, T](t: RBTree[K, T], p: RBNode[K, T], key: K, value: T): RBNode[K, T] =
-  t.count += 1
   RBNode[K, T](parent: p, no: t.count, key: key, value: value, color: RED)
 
 proc isLeft(n: RBNode): bool =
@@ -175,7 +173,7 @@ proc balance(t: RBTree, node: RBNode) =
   while t.root.parent != nil:
     t.root = t.root.parent
 
-proc insert*[K, T](t: RBTree[K, T], key: K, value: T) =
+proc insert*[K, T](t: RBTree[K, T], key: K, value: T) {.inline.} =
   ## See: https://en.wikipedia.org/wiki/Red%E2%80%93black_tree#Insertion
   var (rt, p, n) = t.root.search(key)
   if n != nil:
@@ -198,6 +196,7 @@ proc insert*[K, T](t: RBTree[K, T], key: K, value: T) =
       log(lvlDebug, "[Case 1: The target node is root]")
   # The root is always black
   t.root.paint(BLACK)
+  t.count += 1
 
 # Deletion
 proc getSibling[K, T](n: RBNode[K, T]): RBNode[K, T] =
@@ -256,22 +255,24 @@ proc repair[K, T](node: RBNode[K, T]) =
       n.repairCase6(isLeft)
     break
 
-proc delete*[K, T](t: RBTree[K, T], key: K) =
+proc take*[K, T](t: RBTree[K, T], key: K): Option[T] {.inline.} =
   ## See: https://en.wikipedia.org/wiki/Red%E2%80%93black_tree#Removal
   let (_, _, n) = t.root.search(key)
-  if n == nil:
-    return
+  if n == nil: return none(T)
+  result = some(n.value)
   var m = n.left.search(key).parent
   if m == nil: m = n.right.search(key).parent
-  if m == nil: m = n
-  else: (n.key, n.value) = (m.key, m.value)
+  if m == nil: m = n else: (n.key, n.value) = (m.key, m.value)
+
   when not defined(release):
     log(lvlDebug, fmt"[{n.no}.{n.key} -> {m.no}.{m.key}]")
   var p = m.parent
   var c = if m.left != nil: m.left
     elif m.right != nil: m.right else: nil
   assert(m.left == nil or m.right == nil, "Something wrong: Deleted node has both children")
+
   # Delete m node
+  t.count -= 1
   if p != nil:
     if m.isLeft: p.left = c
     else: p.right = c
@@ -285,6 +286,13 @@ proc delete*[K, T](t: RBTree[K, T], key: K) =
     c.repair
     while c.parent != nil: c = c.parent
     t.root = c
+
+proc delete*[K, T](t: RBTree[K, T], key: K) =
+  discard t.take(t, key)
+
+# Put
+proc `[]=`*[K, T](t: var RBTree[K, T], key: K, value: T) =
+  t.insert(key, value)
 
 # Get
 proc `[]`*[K, T](t: RBTree[K, T], key: K): Option[T] =
