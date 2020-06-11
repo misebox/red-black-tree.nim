@@ -302,3 +302,25 @@ proc `[]`*[K, T](t: RBTree[K, T], key: K): Option[T] =
     some(n.value)
   else:
     none(T)
+
+# Traversal
+iterator traverse*[K, T](start: RBNode[K, T]): (K, T) {.closure.} =
+  if start == nil: return
+  var prev: RBNode[K, T] = nil
+  var n = start
+  while true:
+    if n.left != nil and (prev == nil or prev == n.parent):
+      prev = n
+      n = n.left
+      continue
+    if prev == nil or prev != n.right:
+      yield (n.key, n.value)
+    if n.right != nil and (prev == nil or prev != n.right):
+      prev = n
+      n = n.right
+      continue
+    if n.parent != nil:
+      prev = n
+      n = n.parent
+      continue
+    break
