@@ -1,5 +1,4 @@
 import strformat
-import logging
 import strutils
 import options
 export options
@@ -82,7 +81,6 @@ proc isLeft(n: RBNode): bool =
   n.parent.left == n
 
 proc rotate(n: RBNode, dir: RBDir): RBNode =
-  # when not defined(release): log(lvlDebug, fmt"[rotate {dir}]")
   var pivot: RBNode
   if dir == RBDir.LEFT:
     assert(n.right != nil, "Pivot is nil")
@@ -144,21 +142,18 @@ proc balance(t: RBTree, node: RBNode) =
     n = node
     p = n.parent
   if p.isBlack:
-    when not defined(release):
-      log(lvlDebug, "[Insertion Case 2: parent is black]")
+    # [Insertion Case 2: parent is black]
     # Nothing to do
     return
   let g = p.parent
   let u = if p.isLeft: g.right else: g.left
   if p.isRed:
     if u != nil and u.isRed:
-      when not defined(release):
-        log(lvlDebug, "[Insertion Case 3: If P and U are red]")
+      # [Insertion Case 3: If P and U are red]
       g.flipColors()
       t.balance(g)
     else:
-      when not defined(release):
-        log(lvlDebug, "[Insertion Case 4: P is red and U is black]")
+      # [Insertion Case 4: P is red and U is black]
       let dir = if p.isLeft: RBDir.RIGHT else: RBDir.LEFT
       if p.isLeft != n.isLeft:
         # - step 1: It makes the new node on the outside if it's on the inside
@@ -188,10 +183,7 @@ proc insert*[K, T](t: RBTree[K, T], key: K, value: T) {.inline.} =
     p.right = n
   t.balance(n)
 
-  when not defined(release):
-    if t.root.isRed:
-      log(lvlDebug, "[Case 1: The target node is root]")
-  # The root is always black
+  # [Case 1: The target node is root]
   t.root.paint(BLACK)
   t.count += 1
 
@@ -200,7 +192,7 @@ proc getSibling[K, T](n: RBNode[K, T]): RBNode[K, T] =
   if n.isLeft: n.parent.right else: n.parent.left
 
 proc repairCase6[K, T](node: RBNode[K, T], isLeft: bool) {.inline.} =
-  when not defined(release): log(lvlDebug, "[Deletion Case 6]")
+  # [Deletion Case 6]
   let p = node.parent
   let (edgeTo, sc) = if isLeft:
     (RBDir.LEFT, p.right.right)
@@ -216,9 +208,8 @@ proc repair[K, T](node: RBNode[K, T]) =
   while true:
     var p = n.parent
     if p == nil:
-      # Deletion Case 1
+      # [Deletion Case 1]
       n.paint(BLACK)
-      when not defined(release): log(lvlDebug, "[Deletion Case 1]")
       return
     var s = n.getSibling
     if s == nil:
@@ -229,22 +220,20 @@ proc repair[K, T](node: RBNode[K, T]) =
     else:
       (RBDir.RIGHT, s.right, s.left)
     if s.isRed:
-      # Deletion Case 2
+      # [Deletion Case 2]
       discard p.rotate(edgeTo)
-      when not defined(release): log(lvlDebug, "[Deletion Case 2]")
       return
     if sc1 == nil or sc2 == nil: return
     if p.isBlack and s.isBlack and sc1.isBlack and sc2.isBlack:
-      # Deletion Case 3
+      # [Deletion Case 3]
       s.paint(RED)
       n = p
-      when not defined(release): log(lvlDebug, "[Deletion Case 3]")
       continue
     elif p.isRed and s.isBlack and sc1.isBlack and sc2.isBlack:
-      when not defined(release): log(lvlDebug, "[Deletion Case 4]")
+      # [Deletion Case 4]
       swap(p.color, s.color)
     elif s.isBlack and sc1.isRed and sc2.isBlack:
-      when not defined(release): log(lvlDebug, "[Deletion Case 5]")
+      # [Deletion Case 5]
       s = s.rotate(edgeTo.opposite)
       n.repairCase6(isLeft)
     elif s.isBlack and sc2.isRed:
